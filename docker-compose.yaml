@@ -1,0 +1,117 @@
+services:
+  postgres:
+    image: postgres:17.0-alpine
+    ports:
+      - 5432:5432
+    volumes:
+      - boilerplate-db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: authentication
+    networks:
+      - green-food
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d authentication"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  maildev:
+    image: maildev/maildev
+    container_name: maildev
+    ports:
+      - "1025:1025"   # Porta SMTP para envio de emails
+      - "1080:80"     # Interface web para visualizar emails
+    environment:
+      - MAILDEV_SMTP_PORT=1025
+      - MAILDEV_WEB_PORT=80
+    networks:
+      - green-food
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+    networks:
+      - green-food
+
+  # Uncomment to use redis
+  # redis:
+  #   image: redis:7-alpine
+  #   ports:
+  #     - 6379:6379
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"  # Fixando a porta para evitar variáveis de ambiente
+    environment:
+      - NODE_ENV=development
+      - APP_PORT=3001
+      - APP_NAME=NestJS API
+      - API_PREFIX=api
+      - APP_FALLBACK_LANGUAGE=en
+      - APP_HEADER_LANGUAGE=x-custom-lang
+      - FRONTEND_DOMAIN=http://localhost:3100
+      - BACKEND_DOMAIN=http://localhost:3000
+      - DATABASE_TYPE=postgres
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USERNAME=admin
+      - DATABASE_PASSWORD=admin123
+      - DATABASE_NAME=authentication
+      - DATABASE_SYNCHRONIZE=true
+      - DATABASE_MAX_CONNECTIONS=100
+      - DATABASE_SSL_ENABLED=false
+      - DATABASE_REJECT_UNAUTHORIZED=false
+      - DATABASE_CA=
+      - DATABASE_KEY=
+      - DATABASE_CERT=
+      - DATABASE_URL=
+      - FILE_DRIVER=local
+      - ACCESS_KEY_ID=
+      - SECRET_ACCESS_KEY=
+      - AWS_S3_REGION=
+      - AWS_DEFAULT_S3_BUCKET=
+      - MAIL_HOST=maildev
+      - MAIL_PORT=1025
+      - MAIL_USER=
+      - MAIL_PASSWORD=
+      - MAIL_IGNORE_TLS=true
+      - MAIL_SECURE=false
+      - MAIL_REQUIRE_TLS=false
+      - MAIL_DEFAULT_EMAIL=noreply@example.com
+      - MAIL_DEFAULT_NAME=Api
+      - MAIL_CLIENT_PORT=1080
+      - AUTH_JWT_SECRET=secret
+      - AUTH_JWT_TOKEN_EXPIRES_IN=15m
+      - AUTH_REFRESH_SECRET=secret_for_refresh
+      - AUTH_REFRESH_TOKEN_EXPIRES_IN=3650d
+      - AUTH_FORGOT_SECRET=secret_for_forgot
+      - AUTH_FORGOT_TOKEN_EXPIRES_IN=30m
+      - AUTH_CONFIRM_EMAIL_SECRET=secret_for_confirm_email
+      - AUTH_CONFIRM_EMAIL_TOKEN_EXPIRES_IN=1d
+      - FACEBOOK_APP_ID=
+      - FACEBOOK_APP_SECRET=
+      - GOOGLE_CLIENT_ID=
+      - GOOGLE_CLIENT_SECRET=
+      - APPLE_APP_AUDIENCE=[]
+      - TWITTER_CONSUMER_KEY=
+      - TWITTER_CONSUMER_SECRET=
+      - WORKER_HOST=redis://redis:6379/1
+    networks:
+      - green-food
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  boilerplate-db:
+networks:
+  green-food:
+    driver: bridge
